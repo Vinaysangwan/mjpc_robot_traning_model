@@ -1,0 +1,159 @@
+<mujoco model="Assembly2_grab">
+  <!-- Units: metres, kg, radians. Copy your STL files into a "meshes/" folder next to this file. -->
+  <compiler angle="radian" meshdir="meshes" autolimits="true"/>
+  <size nuserdata="2"/>
+
+  <!-- implicitfast: needed so the stiff velocity/position actuators stay stable at dt=0.01 -->
+  <option timestep="0.01" integrator="implicitfast"/>
+
+  <default>
+    <default class="revolute">
+      <!-- <joint type="hinge" limited="true" damping="1" frictionloss="0.3"/> -->
+      <joint type="hinge" limited="true" damping="1" frictionloss="0.05"/>
+    </default>
+    <default class="visual">
+      <geom type="mesh" contype="0" conaffinity="0" group="2" density="0"/>
+    </default>
+    <default class="collision">
+      <geom type="mesh" group="3"/>
+    </default>
+  </default>
+
+  <asset>
+    <material name="PLA_gray" rgba="0.62745 0.62745 0.64314 1"/>
+    <material name="PLA_light" rgba="0.89412 0.89412 0.89412 1"/>
+    <mesh name="base_link" file="base_link.STL"/>
+    <mesh name="Body_Link" file="Body_Link.STL"/>
+    <mesh name="Shoulder_Left_Link" file="Shoulder_Left_Link.STL"/>
+    <mesh name="Arm_Left_Link" file="Arm_Left_Link.STL"/>
+    <mesh name="Wrist_Left_Link" file="Wrist_Left_Link.STL"/>
+    <mesh name="Shoulder_Right_Link" file="Shoulder_Right_Link.STL"/>
+    <mesh name="Arm_Right_Link" file="Arm_Right_Link.STL"/>
+    <mesh name="Wrist_Right_Link" file="Wrist_Right_Link.STL"/>
+  </asset>
+
+  <worldbody>
+    <!-- ===== NEW: the cuboid. Mocap body, moved in a straight line by Grab::TransitionLocked. =====
+         No collision for now (contype=0). Faces sit at +-0.04 in x, so the arms squeeze along x. -->
+    <body name="cuboid" mocap="true" pos="0.009 -0.3 0.325">
+      <geom type="box" size="0.04 0.03 0.03" rgba="1 0.3 0.2 0.7" contype="0" conaffinity="0"/>
+      <site name="faceL" pos="-0.04 0 0" size="0.008" rgba="0 1 0 1"/>
+      <site name="faceR" pos="0.04 0 0" size="0.008" rgba="0 1 0 1"/>
+    </body>
+
+    <body name="base_link" pos="0 0 0" quat="1 0 0 0">
+      <inertial pos="-3.3307e-16 -2.2204e-16 0.013592" mass="0.076743" fullinertia="2.1941e-05 2.1941e-05 3.4357e-05 1.6941e-21 -2.0314e-19 3.7463e-20"/>
+      <geom class="visual" mesh="base_link" material="PLA_gray"/>
+      <geom class="collision" mesh="base_link"/>
+      <body name="Body_Link" pos="0 0 0">
+        <joint name="BodySync_joint" type="hinge" pos="0 0 0.027" axis="0 0 1" damping="0.01" frictionloss="0.02"/>
+        <inertial pos="-5.3868e-13 -0.0012537 0.053244" mass="0.15" fullinertia="0.00035278 0.00039111 0.00055175 -5.8988e-14 2.7583e-15 -3.5949e-07"/>
+        <geom class="visual" mesh="Body_Link" material="PLA_light"/>
+        <geom class="collision" mesh="Body_Link"/>
+
+        <!-- ============================ LEFT ARM ============================ -->
+        <body name="Shoulder_Left_Link" pos="0 0 0">
+          <joint name="ShoulderL_Joint" class="revolute" pos="-0.0676 -0.005375 0.072744" axis="1 0 0" range="0.0005 0.5241" limited="true"/>
+          <inertial pos="-0.096014 -0.0058813 0.072976" mass="0.1" fullinertia="2.1272e-05 2.3937e-05 1.5585e-05 6.0143e-08 -1.5841e-08 -2.5121e-06"/>
+          <geom class="visual" mesh="Shoulder_Left_Link" material="PLA_light"/>
+          <geom class="collision" mesh="Shoulder_Left_Link"/>
+          <body name="Arm_Left_Link" pos="0 0 0">
+            <!-- FIXED: range was "-0.1745 0.5". Now matches ctrlrange and the "outward to 120 deg" comment. -->
+            <joint name="ArmL_Joint" class="revolute" pos="-0.0961 -0.027082 0.068447" axis="0 0.96581 -0.25927" range="-2.0944 -0.1745" limited="true"/>
+            <inertial pos="-0.12558 -0.0070932 0.19736" mass="0.17" fullinertia="0.00053337 0.00053494 9.1672e-05 3.0029e-05 0.00011047 -0.00013007"/>
+            <geom class="visual" mesh="Arm_Left_Link" material="PLA_light"/>
+            <geom class="collision" mesh="Arm_Left_Link"/>
+            <body name="Wrist_Left_Link" pos="0 0 0">
+              <joint name="WristL_Joint" class="revolute" pos="-0.149773 0.030474 0.263393" axis="0 -0.96581 0.25927" range="-1.5708 1.0664" limited="true"/>
+              <inertial pos="-0.082027 0.058018 0.32309" mass="0.05" fullinertia="0.00017772 0.00032187 0.00017866 -4.2337e-05 -0.00014643 -4.4942e-05"/>
+              <geom class="visual" mesh="Wrist_Left_Link" material="PLA_gray"/>
+              <geom class="collision" mesh="Wrist_Left_Link"/>
+              <!-- NEW: grasp point. PLACEHOLDER = wrist centre of mass. Run find_tips.py and paste the real tip here. -->
+              <site name="tipL" pos="-0.0224 0.0706 0.3838" size="0.008" rgba="0 0 1 1"/>
+            </body>
+          </body>
+        </body>
+
+        <!-- ============================ RIGHT ARM =========================== -->
+        <body name="Shoulder_Right_Link" pos="0 0 0">
+          <joint name="ShoulderR_Joint" class="revolute" pos="0.0676 -0.005375 0.072744" axis="-1 0 0" range="-0.4496 0.0740" limited="true"/>
+          <inertial pos="0.096014 -0.0058972 0.072938" mass="0.1" fullinertia="2.1272e-05 2.4263e-05 1.5259e-05 -6.1155e-08 1.1322e-08 -1.8645e-06"/>
+          <geom class="visual" mesh="Shoulder_Right_Link" material="PLA_light"/>
+          <geom class="collision" mesh="Shoulder_Right_Link"/>
+          <body name="Arm_Right_Link" pos="0 0 0">
+            <!-- FIXED: range was "-0.5 0.1745". Now matches ctrlrange. -->
+            <joint name="ArmR_Joint" class="revolute" pos="0.0961 -0.026702 0.066843" axis="0 0.98242 -0.18668" range="0.1745 2.0944" limited="true"/>
+            <inertial pos="0.13401 -0.017752 0.19491" mass="0.17" fullinertia="0.00051638 0.00055239 9.1213e-05 -2.7457e-05 -0.00014201 -9.2591e-05"/>
+            <geom class="visual" mesh="Arm_Right_Link" material="PLA_light"/>
+            <geom class="collision" mesh="Arm_Right_Link"/>
+            <body name="Wrist_Right_Link" pos="0 0 0">
+              <joint name="WristR_Joint" class="revolute" pos="0.145365 0.015412 0.266813" axis="0 -0.98242 0.18668" range="-0.8535 1.5708" limited="true"/>
+              <inertial pos="0.099811 0.038328 0.32782" mass="0.05" fullinertia="0.00019855 0.00032695 0.00015276 3.0691e-05 0.00014701 -3.7818e-05"/>
+              <geom class="visual" mesh="Wrist_Right_Link" material="PLA_gray"/>
+              <geom class="collision" mesh="Wrist_Right_Link"/>
+              <!-- NEW: grasp point. PLACEHOLDER = wrist centre of mass. -->
+              <site name="tipR" pos="0.0442 0.0471 0.3929" size="0.008" rgba="0 0 1 1"/>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <contact>
+    <exclude body1="base_link" body2="Body_Link"/>
+  </contact>
+
+  <actuator>
+    <velocity name="BodySync_motor" joint="BodySync_joint" kv="1" ctrllimited="true" ctrlrange="-6.28 6.28" forcelimited="true" forcerange="-0.41 0.41"/>
+    <position name="ShoulderL_motor" joint="ShoulderL_Joint" kp="20" ctrllimited="true" ctrlrange="0.0005 0.5241" forcelimited="true" forcerange="-1.96 1.96"/>
+    <position name="ArmL_motor" joint="ArmL_Joint" kp="20" ctrllimited="true" ctrlrange="-2.0944 -0.1745" forcelimited="true" forcerange="-1.96 1.96"/>
+    <position name="WristL_motor" joint="WristL_Joint" kp="20" ctrllimited="true" ctrlrange="-1.5708 1.0664" forcelimited="true" forcerange="-1.96 1.96"/>
+    <position name="ShoulderR_motor" joint="ShoulderR_Joint" kp="20" ctrllimited="true" ctrlrange="-0.4496 0.0740" forcelimited="true" forcerange="-1.96 1.96"/>
+    <position name="ArmR_motor" joint="ArmR_Joint" kp="20" ctrllimited="true" ctrlrange="0.1745 2.0944" forcelimited="true" forcerange="-1.96 1.96"/>
+    <position name="WristR_motor" joint="WristR_Joint" kp="20" ctrllimited="true" ctrlrange="-0.8535 1.5708" forcelimited="true" forcerange="-1.96 1.96"/>
+  </actuator>
+
+  <!-- ===== MJPC cost terms. ORDER MATTERS: the user sensors define the residual vector (3+3+7 = 13 dims).
+       user = "norm weight weight_min weight_max". Norm 0 = quadratic. Weights show up as GUI sliders. ===== -->
+  <sensor>
+    <!-- <user name="ReachL" dim="3" user="0 100 0 1000"/>
+    <user name="ReachR" dim="3" user="0 100 0 1000"/>
+    <user name="Effort" dim="7" user="0 0.1 0 10"/>
+    <user name="Velocity" dim="7" user="0 1 0 100"/> -->
+
+    <user name="ReachL" dim="3" user="0 300 0 1000"/>
+    <user name="ReachR" dim="3" user="0 300 0 1000"/>
+    <user name="Effort" dim="7" user="0 0.01 0 10"/>
+    <user name="Velocity" dim="7" user="0 0.05 0 100"/>
+
+    <framepos name="tipL_pos" objtype="site" objname="tipL"/>
+    <framepos name="tipR_pos" objtype="site" objname="tipR"/>
+    <framepos name="faceL_pos" objtype="site" objname="faceL"/>
+    <framepos name="faceR_pos" objtype="site" objname="faceR"/>
+  </sensor>
+
+  <custom>
+    <!-- planner: 0 = Predictive Sampling (first in the GUI list) -->
+    <numeric name="agent_planner" data="0"/>
+    <numeric name="agent_horizon" data="0.6"/>
+    <numeric name="agent_timestep" data="0.01"/>
+    <numeric name="agent_integrator" data="3"/>
+    <numeric name="sampling_spline_points" data="4"/>
+    <numeric name="sampling_exploration" data="0.04"/>
+    <!-- <numeric name="sampling_exploration" data="0.1"/> -->
+
+    <!-- cuboid straight-line motion (edit these, then rebuild): start, velocity, wrap-around period -->
+    <numeric name="cuboid_x0" data="0.009"/>
+    <numeric name="cuboid_y0" data="-0.3"/>
+    <numeric name="cuboid_z0" data="0.325"/>
+    <numeric name="cuboid_vx" data="0.0"/>
+    <numeric name="cuboid_vy" data="0.1"/>
+    <numeric name="cuboid_vz" data="0.0"/>
+    <numeric name="grab_threshold" data="0.03"/>
+  </custom>
+
+  <keyframe>
+    <key name="home" qpos="0 0.2623 -0.1745 0 -0.1878 0.1745 0" ctrl="0 0.2623 -0.1745 0 -0.1878 0.1745 0"/>
+  </keyframe>
+</mujoco>
